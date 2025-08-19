@@ -1,4 +1,5 @@
 // server.js
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -8,7 +9,7 @@ const fs = require('fs');
 const { Pool } = require('pg');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // ===== Middleware =====
 app.use(cors());
@@ -26,13 +27,13 @@ app.get('/findings.html', (req, res) => res.sendFile(path.join(__dirname, 'findi
 
 // ===== DB Connection =====
 const pool = new Pool({
-  connectionString: 'postgresql://neondb_owner:npg_J1gloZUcFQS2@ep-still-truth-a1051s4o-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
+  connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_J1gloZUcFQS2@ep-still-truth-a1051s4o-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
   ssl: { rejectUnauthorized: false }
 });
 
 // ===== Login DB Connection =====
 const poolLogin = new Pool({
-  connectionString: 'postgresql://neondb_owner:npg_Oa2PvqXF1ZHs@ep-square-bonus-a1go72ll-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require',
+  connectionString: process.env.LOGIN_DATABASE_URL || 'postgresql://neondb_owner:npg_Oa2PvqXF1ZHs@ep-square-bonus-a1go72ll-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require',
   ssl: { rejectUnauthorized: false }
 });
 
@@ -460,19 +461,41 @@ app.get("/api/incidents", async (req, res) => {
 });
 
 app.post("/submit-incident", upload.single("evidence"), async (req, res) => {
+  console.log('=== INCIDENT SUBMISSION LOG ===');
+  console.log('Timestamp:', new Date().toISOString());
+  console.log('Request body:', req.body);
+  console.log('File:', req.file ? req.file.originalname : 'No file');
+  console.log('Database URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
+  
   const { incidentType, severity, date, department, description } = req.body;
   const evidenceFile = req.file ? req.file.filename : null;
+  
   try {
+    // Test database connection first
+    await pool.query('SELECT 1');
+    console.log('Database connection successful');
+    
     const result = await pool.query(
       `INSERT INTO incidents 
       (incident_type, severity_level, date_reported, department, description, evidence, status) 
       VALUES ($1, $2, $3, $4, $5, $6, 'open') RETURNING incident_id`,
       [incidentType, severity, date, department, description, evidenceFile]
     );
+    
+    console.log('Incident inserted successfully with ID:', result.rows[0].incident_id);
+    console.log('=== END INCIDENT SUBMISSION LOG ===');
+    
     res.json({ success: true, incident_id: result.rows[0].incident_id });
   } catch (error) {
+    console.error("=== INCIDENT SUBMISSION ERROR ===");
     console.error("Insert incident error:", error);
-    res.status(500).json({ error: "Database insert failed" });
+    console.error("Error stack:", error.stack);
+    console.error("=== END INCIDENT SUBMISSION ERROR ===");
+    res.status(500).json({ 
+      error: "Database insert failed", 
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
@@ -509,9 +532,32 @@ app.get('/api/incidents/:id/evidence', async (req, res) => {
   }
 });
 
+// Health check endpoint
+app.get('/health', async (req, res) => {
+  try {
+    // Test database connection
+    await pool.query('SELECT 1');
+    res.json({ 
+      status: 'healthy', 
+      database: 'connected',
+      timestamp: new Date().toISOString(),
+      port: PORT
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'unhealthy', 
+      database: 'disconnected',
+      error: error.message,
+      timestamp: new Date().toISOString(),
+      port: PORT
+    });
+  }
+});
+
 // ===== START SERVER =====
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
+  console.log(`📊 Health check available at http://localhost:${PORT}/health`);
 });
 
 // ===== Extra routes from server1.js =====
