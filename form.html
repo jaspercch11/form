@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Report a New Incident</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, #c471f5, #6a93ff);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+    }
+    .form-container {
+        background: white;
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        width: 500px;
+    }
+    h2 {
+        text-align: center;
+        margin-bottom: 25px;
+    }
+    label {
+        font-weight: bold;
+        display: block;
+        margin-top: 18px;
+        margin-bottom: 6px;
+        font-size: 14px;
+    }
+    select, input, textarea {
+        width: 100%;
+        padding: 12px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        font-size: 15px;
+        background-color: white;
+        box-sizing: border-box;
+    }
+    textarea {
+        resize: vertical;
+        height: 100px;
+    }
+    .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+    }
+    .row div {
+        flex: 1;
+    }
+    button {
+        background: #007bff;
+        color: white;
+        padding: 14px;
+        width: 100%;
+        border: none;
+        border-radius: 25px;
+        font-size: 16px;
+        cursor: pointer;
+        margin-top: 25px;
+    }
+    button:hover {
+        background: #0056b3;
+    }
+    @media (max-width: 600px) {
+        .row {
+            flex-direction: column;
+            gap: 15px;
+        }
+    }
+</style>
+</head>
+<body>
+
+<div class="form-container">
+    <h2>Report a New Incident</h2>
+
+    <form id="incidentForm" enctype="multipart/form-data">
+        <div class="row">
+            <div>
+                <label for="incident-type">Incident type</label>
+                <select id="incident-type" name="incidentType" required>
+                    <option value="" disabled selected>Select type</option>
+                    <option>GDPR Violation</option>
+                    <option>Data Breach</option>
+                    <option>Product Contamination</option>
+                    <option>Labeling Error / Mislabeling</option>
+                    <option>Safety Hazard - Workplace</option>
+                    <option>Adverse Customer Reaction</option>
+                    <option>Fraud / Misconduct</option>
+                    <option>Policy Violation</option>
+                    <option>System Failure / Downtime</option>
+                    <option>Inventory Loss / Theft</option>
+                    <option>Supplier Non-Compliance</option>
+                    <option>Other (Specify)</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="severity">Severity</label>
+                <select id="severity" name="severity" required>
+                    <option value="" disabled selected>Select severity</option>
+                    <option>Critical</option>
+                    <option>High</option>
+                    <option>Medium</option>
+                    <option>Low</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row">
+            <div>
+                <label for="date">Date</label>
+                <input type="date" id="date" name="date" required>
+            </div>
+
+            <div>
+                <label for="department">Department</label>
+                <select id="department" name="department" required>
+                    <option value="" disabled selected>Select department</option>
+                    <option>Human Resources</option>
+                    <option>Project Management</option>
+                    <option>Sales & CRM</option>
+                    <option>Manufacturing & Production Mgmt.</option>
+                    <option>Inventory & Warehouse Mgmt.</option>
+                    <option>Procurement</option>
+                    <option>Finance and Accounting</option>
+                    <option>B.I. and Analytics</option>
+                    <option>Compliance & Risk Mangement</option>
+                </select>
+            </div>
+        </div>
+
+        <label for="description">Description</label>
+        <textarea id="description" name="description" placeholder="Enter details..." required></textarea>
+
+        <label for="evidence">Evidence</label>
+        <input type="file" id="evidence" name="evidence">
+
+        <button type="submit">Submit</button>
+    </form>
+</div>
+
+<script>
+document.getElementById('incidentForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const submitButton = this.querySelector('button[type="submit"]');
+    const originalText = submitButton.textContent;
+    
+    // Disable button and show loading state
+    submitButton.disabled = true;
+    submitButton.textContent = 'Submitting...';
+    
+    try {
+        const response = await fetch('/submit-incident', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            // Show success message with incident ID
+            alert(`Incident submitted successfully! Incident ID: ${result.incident_id}`);
+            // Reload the page
+            window.location.reload();
+        } else {
+            // Show error message
+            const errorMessage = result.error || 'Failed to submit incident. Please try again.';
+            alert(errorMessage);
+        }
+    } catch (error) {
+        console.error('Error submitting incident:', error);
+        alert('An error occurred while submitting the incident. Please try again.');
+    } finally {
+        // Re-enable button and restore original text
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
+    }
+});
+</script>
+
+</body>
+</html>
+
